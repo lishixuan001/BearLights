@@ -25,28 +25,22 @@ from skimage import io
 # input = io.imread('./test.png')
 # preds = fa.get_landmarks(input)
 # print(preds)
-
+import stasm
 import sys
 import os
 import dlib
 import glob
 import matplotlib.pyplot as plt
 import skimage.io as skio
+import cv2
 
-if len(sys.argv) != 3:
-    print(
-        "Give the path to the trained shape predictor model as the first "
-        "argument and then the directory containing the facial images.\n"
-        "For example, if you are in the python_examples folder then "
-        "execute this program by running:\n"
-        "    ./face_landmark_detection.py shape_predictor_68_face_landmarks.dat test.png\n"
-        "You can download a trained facial shape predictor from:\n"
-        "    http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2")
+if len(sys.argv) != 2:
     exit()
 
-predictor_path = sys.argv[1]
-faces_folder_path = sys.argv[2]
 
+faces_folder_path = sys.argv[1]
+
+predictor_path = os.path.join(sys.path[0], 'predictor.dat')
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
 
@@ -68,7 +62,9 @@ for f in glob.glob(os.path.join(faces_folder_path, "*.jpg")):
         print("Detection {}: Left: {} Top: {} Right: {} Bottom: {}".format(
             k, d.left(), d.top(), d.right(), d.bottom()))
         # Get the landmarks/parts for the face in box d.
-        shape = predictor(img, d)
+        shape = predictor(img, det)
+        # points=stasm.search_single(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+        # print(points)
         #0-17 脸
         #18-22 左眉毛
         #23-27 右眉毛
@@ -80,6 +76,10 @@ for f in glob.glob(os.path.join(faces_folder_path, "*.jpg")):
         	x, y = i.x, i.y
         	plt.scatter(x, y, s=5, c='red', marker='o')
         plt.show() 
+        # for i in points:
+        #     x, y = i
+        #     plt.scatter(x, y, s=5, c='red', marker='o')
+        # plt.show() 
         # Draw the face landmarks on the screen.
 
     dlib.hit_enter_to_continue()
