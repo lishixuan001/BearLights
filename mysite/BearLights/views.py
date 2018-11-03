@@ -7,13 +7,21 @@ from django import forms
 from django.template import RequestContext
 from django.contrib import auth
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 
-# Create your views here.
 """
 Index page
 """
 def index(request):
-    return render(request, 'index.html', {})
+    if request.user.is_authenticated:
+        current_user = request.user
+        username = current_user.get_username()
+        context = {
+            'username' : username,
+        }
+        return render(request, 'index.html', context)
+    else:
+        return render(request, 'index.html')
 
 """
 User Registraion Process
@@ -76,8 +84,23 @@ User Logout Process
 def logout(request):
     if request.method == 'GET':
         auth.logout(request)
-        return HttpResponseRedirect('/login/')
+        return HttpResponseRedirect('/index/')
 
+"""
+Profile page
+"""
+@login_required
+def profile(request):
+    current_user = request.user
+    username = current_user.get_username()
+    context = {
+        'username' : username,
+    }
+    return render(request, "user_profile.html", context)
+
+"""
+Form Helper Methods
+"""
 class UserFormRegister(forms.Form):
     username = forms.CharField(label='Username', max_length=100)
     password = forms.CharField(label='Password', widget=forms.PasswordInput())

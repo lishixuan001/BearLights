@@ -17,6 +17,23 @@
     <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 
+    {# Voice Output JS #}
+    <script src='https://code.responsivevoice.org/responsivevoice.js'></script>
+    {# Microphone Access JS #}
+    {% load static %}
+    <script src="{% static "p5/p5.js" %}"></script>
+    <script src="{% static "p5/addons/p5.sound.js" %}"></script>
+    <script src="{% static "p5/addons/p5.dom.js" %}"></script>
+    <script src="{% static "recorder/recorder.js" %}"></script>
+    {# Play reminder sound #}
+    <script src='https://code.jquery.com/jquery-2.2.0.min.js'></script>
+    <script src='https://cdn.rawgit.com/admsev/jquery-play-sound/master/jquery.playSound.js'></script>
+    {# For getting identificationProfileId #}
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+    {# For Azure Text to Speech #}
+{#    <script src="{% static "Text2Speech/require.js" %}"></script>#}
+{#    <script src="{% static "Text2Speech/TTSService.js" %}"></script>#}
+
     <style>
         body, html {
             height: 100%;
@@ -102,6 +119,53 @@
     </style>
 </head>
 <body>
+
+    {# Welcome auto-speaking by webpage when visited #}
+    <script>
+        $(document).ready (function() {
+            responsiveVoice.speak("Hello! Welcome to Bear Lights! Registration Page. ");
+        })
+    </script>
+
+    {# Generate identificationProfileId by sending requests to Azure #}
+    <script>
+        function generate_profile_id() {
+            var params = {
+                // Request parameters
+            };
+
+            var body = {
+                // Request body
+                "locale" : "en-us"
+            };
+
+            $.ajax({
+                url: "https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles?" + $.param(params),
+                beforeSend: function(xhrObj){
+                    var subscription_key = "a35199073e8b4f1b8316d5ef10afafe6";
+                    // Request headers
+                    xhrObj.setRequestHeader("Content-Type","application/json");
+                    xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", subscription_key);
+                },
+                type: "POST",
+                // Request body
+                data: JSON.stringify(body),
+            })
+            .done(function(data) {
+                responsiveVoice.speak("ID generation complete!");
+                return data["identificationProfileId"]
+            })
+            .fail(function() {
+                responsiveVoice.speak("ID generation failed! Please refresh the page and try again!");
+            });
+        }
+    </script>
+
+    {# Direct the user to speak out his/her username #}
+    <script>
+
+    </script>
+
     <div class="container">
           <div id="display">
               <form id=input method="post">
@@ -114,19 +178,16 @@
                       <label for="password"><span style="font-size: medium; ">Password</span></label><br>
                       <input type="password" class="input form-control" id="password" name="password" placeholder="Enter Password" required>
                   </div>
-                  <div class="form-group">
-                      <label for="password_confirm"><span style="font-size: medium; ">Confirm Password</span></label><br>
-                      <input type="password" class="input form-control" id="password_confirm" name="password_confirm" placeholder="Re-Enter Password" required>
-                  </div>
-                  {# If there are errors #}
-                  {% if error_msg %}
-                      <p><span style="font-size: medium; color: red">{{ error_msg }}</span></p>
-                  {% endif %}
-                  <br><br>
+                  {# Allow user to create a profile by pressing the button #}
                   <div class="form-group" align=center>
                       <label class="sr-only">Submit Registration</label>
                       <input class="btn btn-primary" id="submit" type="submit" value="Register">
                   </div>
+
+                  {# If there are errors #}
+                  {% if error_msg %}
+                      <p><span style="font-size: medium; color: red">{{ error_msg }}</span></p>
+                  {% endif %}
               </form>
           </div>
     </div>
