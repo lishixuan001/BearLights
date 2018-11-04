@@ -123,7 +123,6 @@ def face_points(img, add_boundary_points=True):
 	predictor = dlib.shape_predictor(predictor_path)
 	try:
 		dets = detector(img, 1)
-		print(dets)
 		shape = predictor(img, dets[0])
 	except Exception as e:
 		print('Failed finding face points: ', e)
@@ -233,15 +232,12 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	src_img=src_img[:,:,::-1]
 	src_img=cv2.normalize(src_img, None, 0,255,cv2.NORM_MINMAX)
 	combined_face=cv2.normalize(combined_face, None, 0,255,cv2.NORM_MINMAX)
-	plt.imshow(combined_face)
+	#plt.imshow(combined_face)
 	#plt.show()
 	src_face = warp_image(src_img, src_points, combined_points, size)
 	# gray_image = cv2.cvtColor(src_face, cv2.COLOR_RGB2GRAY)
 	# edges = feature.canny(gray_image)
-	plt.imshow(src_face)
-	for i in points:
-		x, y =i[0], i[1]
-		plt.scatter(x, y, s=5, c='red', marker='o')
+	#plt.imshow(src_face)
 	#plt.show()
 	results=[]
 	results1=[]
@@ -258,13 +254,13 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	right_crop = warp_image(src_face, right_eye, right_eye, size)
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
 	right_crop_file = io.BytesIO()
-	imsave(right_crop_file, right_crop, format='png')
+	#imsave(right_crop_file, right_crop, format='png')
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
 	right_crop_comb_file = io.BytesIO()
-	imsave(right_crop_comb_file, right_crop_comb, format='png')
-	plt.imshow(right_crop)
+	#imsave(right_crop_comb_file, right_crop_comb, format='png')
+	#plt.imshow(right_crop)
 	#plt.show()
-	plt.imshow(right_crop_comb)
+	#plt.imshow(right_crop_comb)
 	#plt.show()
 	result = get_grade(right_crop_file, right_crop_comb_file)
 	right_crop_file.close()
@@ -285,9 +281,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
 	left_crop_comb_file = io.BytesIO()
 	imsave(left_crop_comb_file, left_crop_comb, format='png')
-	plt.imshow(left_crop)
+	#plt.imshow(left_crop)
 	#plt.show()
-	plt.imshow(left_crop_comb)
+	#plt.imshow(left_crop_comb)
 	#plt.show()
 	left_eye_bound=boundary_points(np.array(left_eye))
 	result = get_grade(left_crop_file, left_crop_comb_file)
@@ -307,9 +303,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	nose_crop_comb = warp_image(combined_face, nose, nose, size)
 	nose_crop_comb_file = io.BytesIO()
 	imsave(nose_crop_comb_file, nose_crop_comb, format='png')
-	plt.imshow(nose_crop)
+	#plt.imshow(nose_crop)
 	#plt.show()
-	plt.imshow(nose_crop_comb)
+	#plt.imshow(nose_crop_comb)
 	#plt.show()
 	nose_bound=boundary_points(np.array(nose))
 	result = get_grade(nose_crop_file, nose_crop_comb_file)
@@ -329,9 +325,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	mouth_crop_comb = warp_image(combined_face, mouth, mouth, size)
 	mouth_crop_comb_file = io.BytesIO()
 	imsave(mouth_crop_comb_file, mouth_crop_comb, format='png')
-	plt.imshow(mouth_crop)
+	#plt.imshow(mouth_crop)
 	#plt.show()
-	plt.imshow(mouth_crop_comb)
+	#plt.imshow(mouth_crop_comb)
 	#plt.show()
 	mouth_bound=boundary_points(np.array(mouth))
 	result = get_grade(mouth_crop_file, mouth_crop_comb_file)
@@ -397,8 +393,6 @@ def main():
 	# plt.show()
 	finished = 'pic3.jpg'
 	res, score = grade(face, points, finished)
-	print(res)
-	print(score)
 	if score[0]*(1.7-res[0])<= 150:
 		print("Right eye is good")
 	else:
