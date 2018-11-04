@@ -31,8 +31,8 @@
     {# For getting identificationProfileId #}
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
     {# For Azure Text to Speech #}
-{#    <script src="{% static "Text2Speech/require.js" %}"></script>#}
-{#    <script src="{% static "Text2Speech/TTSService.js" %}"></script>#}
+    {# <script src="{% static "Text2Speech/require.js" %}"></script> #}
+    {# <script src="{% static "Text2Speech/TTSService.js" %}"></script> #}
 
     <style>
         body, html {
@@ -127,9 +127,12 @@
         })
     </script>
 
-    {# Generate identificationProfileId by sending requests to Azure #}
     <script>
-        function generate_profile_id() {
+        var profile_id;
+        var username;
+
+        {# Generate identificationProfileId by sending requests to Azure #}
+        $(document).ready (function() {
             var params = {
                 // Request parameters
             };
@@ -153,17 +156,57 @@
             })
             .done(function(data) {
                 responsiveVoice.speak("ID generation complete!");
-                return data["identificationProfileId"]
+                profile_id = data["identificationProfileId"];
             })
             .fail(function() {
                 responsiveVoice.speak("ID generation failed! Please refresh the page and try again!");
             });
-        }
-    </script>
 
-    {# Direct the user to speak out his/her username #}
-    <script>
+            {# Direct the user to speak out his/her username #}
+            if (profile_id) {
+                responsiveVoice.speak("ID Generation complete. Please press space to record your voice for identification. ");
+            }
 
+            {# Get user's voice input #}
+            {# Initialize recording states & variables #}
+            var record_state = 0;
+            var mic, recorder, soundFile;
+            {# Create an audio in #}
+            mic = new p5.AudioIn();
+            mic.start();
+            {# Create a sound recorder #}
+            recorder = new p5.SoundRecorder();
+            {# Connect the mic to the recorder #}
+            recorder.setInput(mic);
+            {# Create a sound file to save #}
+            soundFile = new p5.SoundFile();
+
+            {# Respond to key press #}
+            $(document).keypress(function(event) {
+                var code = event.keyCode ? event.keyCode : e.which;
+                {# Respond if user press 'space' key #}
+                if (code === 32) {
+                    {# If in static state (record_state = 0) and microphone accessibility enabled#}
+                    if (record_state === 0 && mic.enabled) {
+                        $.playSound("http://data.huiyi8.com/2017/gha/03/17/1702.mp3");
+                        {# Start recording into the soundFile #}
+                        recorder.record(soundFile);
+                        {# Update record_state = 1 (recording mode) #}
+                        record_state = 1;
+                    }
+                    else {
+                        $.playSound("http://data.huiyi8.com/2017/gha/03/17/1702.mp3");
+                        {# Stop the recorder #}
+                        recorder.stop();
+                        {# Save the soundFile #}
+                        {# p5.prototype.saveSound(soundFile, 'voiceInput.wav'); #}
+                        {# Export the soundFile as application/octet-stream #}
+                        p5.prototype.toStream(soundFile);
+                        record_state = 0;
+                    }
+                }
+            });
+        })
     </script>
 
     <div class="container">
@@ -172,13 +215,13 @@
                   {% csrf_token %}
                   <div class="form-group">
                       <label for="username"><span style="font-size: medium; ">Username</span></label><br>
-                      <input type="text" class="form-control input" id="username" name="username" placeholder="Enter Username" required>
+                      <input type="text" class="form-control input" id="username" name="username" required>
                   </div>
                   <div class="form-group">
                       <label for="password"><span style="font-size: medium; ">Password</span></label><br>
-                      <input type="password" class="input form-control" id="password" name="password" placeholder="Enter Password" required>
+                      <input type="password" class="input form-control" id="password" name="password" value=generate_profile_id() required>
                   </div>
-                  {# Allow user to create a profile by pressing the button #}
+                  {# Allow user to create a pofile by pressing the button #}
                   <div class="form-group" align=center>
                       <label class="sr-only">Submit Registration</label>
                       <input class="btn btn-primary" id="submit" type="submit" value="Register">

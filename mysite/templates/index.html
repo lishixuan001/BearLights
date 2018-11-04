@@ -47,6 +47,7 @@
         {# Initialize recording states & variables #}
         var record_state = 0;
         var mic, recorder, soundFile;
+        var voice_stream;
         {# Create an audio in #}
         mic = new p5.AudioIn();
         mic.start();
@@ -77,15 +78,46 @@
                     {# Save the soundFile #}
                     {# p5.prototype.saveSound(soundFile, 'voiceInput.wav'); #}
                     {# Export the soundFile as application/octet-stream #}
-                    p5.prototype.toStream(soundFile);
+                    voice_stream = p5.prototype.toStream(soundFile);
                     record_state = 0;
                 }
             }
         });
+
+        if (voice_stream) {
+            {# Create a wave file storing the audio #}
+            var audio_file = new File(
+                voice_stream,
+                'audio.wav',
+                { type: 'application/octet-stream' }
+            );
+
+            var voice_input = $("#voice");
+            voice_input.val(audio_file);
+            var button_submit = $('#submit');
+            button_submit.click();
+        }
     </script>
 
     <form method = 'post'>
         <h1>Congrats! Welcome！</h1>
+              <div class="form-group">
+                  <label for="audio"><span style="font-size: medium; display: none">Voice</span></label><br>
+                  <input type='file' class="input form-control" id="audio" name="audio" required>
+              </div>
+              {# Allow user to create a profile by pressing the button #}
+              <div class="form-group" align=center>
+                  <label class="sr-only">Submit Registration</label>
+                  <input class="btn btn-primary" id="submit" type="submit" value="Register">
+              </div>
     </form>
+
+    {% if filename %}
+        <h1>
+            <span style="color: red; font-weight: bold;">
+                Saved filename: {{ filename }}
+            </span>
+        </h1>
+    {% endif %}
 </body>
 </html>

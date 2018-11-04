@@ -9,19 +9,29 @@ from django.contrib import auth
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 
+from BearLights.models import *
+
 """
 Index page
 """
 def index(request):
+    context = {}
+
     if request.user.is_authenticated:
         current_user = request.user
         username = current_user.get_username()
-        context = {
-            'username' : username,
-        }
-        return render(request, 'index.html', context)
-    else:
-        return render(request, 'index.html')
+        context.update({'username' : username})
+
+    if request.method == "POST":
+        audio_form = IndexForm(request.POST)
+        if audio_form.is_valid():
+            audio_file = audio_form.cleaned_data['audio']
+            voice = Voice(file=audio_file)
+            voice.save()
+            # Voice.objects.create(file=audio_file)
+            context.update({"filename" : voice.get_filename()})
+
+    return render(request, 'index.html', context)
 
 """
 User Registraion Process
@@ -101,6 +111,9 @@ def profile(request):
 """
 Form Helper Methods
 """
+class IndexForm(forms.Form):
+    audio = forms.FileField(label="Audio")
+
 class UserFormRegister(forms.Form):
     username = forms.CharField(label='Username', max_length=100)
     password = forms.CharField(label='Password', widget=forms.PasswordInput())
