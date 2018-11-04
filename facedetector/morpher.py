@@ -34,14 +34,14 @@ def weighted_average_points(start_points, end_points, percent=0.5):
 		return np.asarray(start_points*percent + end_points*(1-percent), np.int32)
 
 def morph(src_img, src_points, dest_img, dest_points, width=500, height=600, background='black'):
-	size = (height, width)
+	size = (width, height)
 	points = weighted_average_points(src_points, dest_points, 1)
 	src_face = warp_image(src_img, src_points, points, size)
 	end_face = warp_image(dest_img, dest_points, points, size)
 	average_face = weighted_average(src_face, end_face, 0.5)[:,:,::-1]
-	gray_image = cv2.cvtColor(average_face, cv2.COLOR_BGR2GRAY)
-	edges = feature.canny(gray_image)
-	return edges, points
+	# gray_image = cv2.cvtColor(average_face, cv2.COLOR_BGR2GRAY)
+	# edges = feature.canny(gray_image)
+	return average_face, points
 
 #def ranking(src_img, src_points, dest_img, dest_points):
 
@@ -220,48 +220,77 @@ def grade(combined_face, combined_points, finished_face):
 	return grade_by_pix(src_img, src_points, combined_face, combined_points, width, height)
 
 def grade_by_pix(src_img, src_points, combined_face, combined_points, width, height):
-	size=(height, width)
+	size=(width, height)
 	points = combined_points
-	src_face = warp_image(src_img, src_points, points, size)[:,:,::-1]
+	src_img=src_img[:,:,::-1]
+	plt.imshow(combined_face)
+	plt.show()
+	src_face = warp_image(src_img, src_points, combined_points, size)
 	# gray_image = cv2.cvtColor(src_face, cv2.COLOR_RGB2GRAY)
 	# edges = feature.canny(gray_image)
 	plt.imshow(src_face)
-
-	# left_eye=np.hstack([points[17:22],points[36:40]])
-	# right_eye=np.hstack([points[22:27],points[43:47]])
-	# right_eye=np.array([[points[i][0] for i in range(22, 27)] + [points[i][0] for i in range(42, 46)], [points[i][1] for i in range(22, 27)] + [points[i][1] for i in range(42, 46)]])
+	for i in points:
+		x, y =i[0], i[1]
+		plt.scatter(x, y, s=5, c='red', marker='o')
+	plt.show()
+	
+	# # left_eye=np.hstack([points[17:22],points[36:40]])
+	# # right_eye=np.hstack([points[22:27],points[43:47]])
+	# # right_eye=np.array([[points[i][0] for i in range(22, 27)] + [points[i][0] for i in range(42, 46)], [points[i][1] for i in range(22, 27)] + [points[i][1] for i in range(42, 46)]])
 	right_eye = []
 	for i in range(22, 27):
-		right_eye.append(points[i])
-	for i in range(42, 46):
-		right_eye.append(points[i])
+		right_eye.append(list(points[i]))
+	for i in range(43, 48):
+		right_eye.append(list(points[i]))
+	right_eye=np.array(right_eye).reshape((len(right_eye), 2))
 
+	right_crop = warp_image(src_face, right_eye, right_eye, size)
+	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
+	plt.imshow(right_crop)
+	plt.show()
 	right_eye_bound=boundary_points(np.array(right_eye))
-	print(right_eye_bound)
+	plt.imshow(right_crop_comb)
+	plt.show()
+	
 
 	left_eye=[]
 	for i in range(17, 22):
 		left_eye.append(points[i])
 	for i in range(36, 40):
 		left_eye.append(points[i])
-
+	left_eye=np.array(left_eye).reshape((len(left_eye), 2))
+	left_crop = warp_image(src_face, left_eye, left_eye, size)
+	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
+	plt.imshow(left_crop)
+	plt.show()
+	plt.imshow(left_crop_comb)
+	plt.show()
 	left_eye_bound=boundary_points(np.array(left_eye))
 
 	nose=[]
 	for i in range(30, 36):
 		nose.append(points[i])
-
+	nose=np.array(nose).reshape((len(nose), 2))
+	nose_crop = warp_image(src_face, nose, nose, size)
+	nose_crop_comb = warp_image(combined_face, nose, nose, size)
+	plt.imshow(nose_crop)
+	plt.show()
+	plt.imshow(nose_crop_comb)
+	plt.show()
 	nose_bound=boundary_points(np.array(nose))
 
 	mouth=[]
 	for i in range(48, 68):
 		mouth.append(points[i])
-
+	mouth=np.array(mouth).reshape((len(mouth), 2))
+	mouth_crop = warp_image(src_face, mouth, mouth, size)
+	mouth_crop_comb = warp_image(combined_face, mouth, mouth, size)
+	plt.imshow(mouth_crop)
+	plt.show()
+	plt.imshow(mouth_crop_comb)
+	plt.show()
 	mouth_bound=boundary_points(np.array(mouth))
 
-	for i in mouth:
-		plt.scatter(i[0], i[1], s=5, c='red', marker='o')
-	plt.show() 
 
 def main():
 	source, dest = 'pic1.jpg', 'pic4.jpg'
