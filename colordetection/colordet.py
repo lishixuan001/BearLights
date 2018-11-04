@@ -10,10 +10,10 @@ def detect_properties(path):
 
     image = vision.types.Image(content=content)
 
-    response = client.image_properties(image=image)
-    props = response.image_properties_annotation
+response = client.image_properties(image=image)
+props = response.image_properties_annotation
     print('Properties:')
-
+    
     for color in props.dominant_colors.colors:
         print('fraction: {}'.format(color.pixel_fraction))
         print('\tr: {}'.format(color.color.red))
