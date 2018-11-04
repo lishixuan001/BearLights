@@ -10,6 +10,8 @@ from builtins import range
 from skimage import feature
 import io
 from google.cloud import vision
+from scipy.misc import imsave
+from PIL import Image
 
 def triangular_affine_matrices(vertices, src_points, dest_points):
 	ones = [1, 1, 1]
@@ -249,10 +251,10 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	right_crop = warp_image(src_face, right_eye, right_eye, size)
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
 	plt.imshow(right_crop)
-	plt.show()
+	# plt.show()
 	right_eye_bound=boundary_points(np.array(right_eye))
 	plt.imshow(right_crop_comb)
-	plt.show()
+	# plt.show()
 	
 
 	left_eye=[]
@@ -264,9 +266,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	left_crop = warp_image(src_face, left_eye, left_eye, size)
 	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
 	plt.imshow(left_crop)
-	plt.show()
+	# plt.show()
 	plt.imshow(left_crop_comb)
-	plt.show()
+	# plt.show()
 	left_eye_bound=boundary_points(np.array(left_eye))
 
 	nose=[]
@@ -276,9 +278,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	nose_crop = warp_image(src_face, nose, nose, size)
 	nose_crop_comb = warp_image(combined_face, nose, nose, size)
 	plt.imshow(nose_crop)
-	plt.show()
+	# plt.show()
 	plt.imshow(nose_crop_comb)
-	plt.show()
+	# plt.show()
 	nose_bound=boundary_points(np.array(nose))
 
 	mouth=[]
@@ -286,12 +288,43 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 		mouth.append(points[i])
 	mouth=np.array(mouth).reshape((len(mouth), 2))
 	mouth_crop = warp_image(src_face, mouth, mouth, size)
+	mouth_crop_file = io.BytesIO()
+	imsave(mouth_crop_file, mouth_crop, format='png')
 	mouth_crop_comb = warp_image(combined_face, mouth, mouth, size)
+	mouth_crop_comb_file = io.BytesIO()
+	imsave(mouth_crop_comb_file, mouth_crop_comb, format='png')
 	plt.imshow(mouth_crop)
-	plt.show()
+	# plt.show()
 	plt.imshow(mouth_crop_comb)
-	plt.show()
+	# plt.show()
 	mouth_bound=boundary_points(np.array(mouth))
+	result = get_grade(mouth_crop_file, mouth_crop_comb_file)
+	mouth_crop_file.close()
+	mouth_crop_comb_file.close()
+	return result
+
+
+def detect_properties(path):
+    """Detects image properties in the file."""
+    client = vision.ImageAnnotatorClient()
+
+    with Image.open(path) as image_file:
+        content = image_file.read()
+
+    image = vision.types.Image(content=content)
+
+    response = client.image_properties(image=image)
+    props = response.image_properties_annotation
+    # print('Properties:')
+
+    # for color in props.dominant_colors.colors:
+    #     print('fraction: {}'.format(color.pixel_fraction))
+    #     print('\tr: {}'.format(color.color.red))
+    #     print('\tg: {}'.format(color.color.green))
+    #     print('\tb: {}'.format(color.color.blue))
+    #     print('\ta: {}'.format(color.color.alpha))
+
+    return [[color.pixel_fraction, color.color.red, color.color.green, color.color.blue] for color in props.dominant_colors.colors]
 
 def get_grade(path1, path2):
     """
