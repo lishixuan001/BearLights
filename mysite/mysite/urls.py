@@ -19,7 +19,9 @@ from BearLights import views
 
 urlpatterns = [
     path('index/', views.index, name='index'),
-    path('register/', views.register, name="register"),
-    path('login/', views.login, name="login"),
+    path('accounts/register/', views.register, name="register"),
+    path('accounts/login/', views.login, name="login"),
+    path('accounts/logout/', views.logout, name="logout"),
+    path('accounts/profile/', views.profile, name="profile"),
     path('admin/', admin.site.urls),
 ]
