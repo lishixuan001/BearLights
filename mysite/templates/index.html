@@ -40,7 +40,7 @@
                     "please speak 'register'. If you already have an account, please speak 'log in'. ";
             var final_msg = "";
             {% if err_msg %}
-                final_msg = {{ err_msg }} + instruction_msg;
+                final_msg = "{{ err_msg }}" + instruction_msg;
             {% else %}
                 final_msg = welcome_msg + instruction_msg;
             {% endif %}
@@ -89,8 +89,7 @@
                 view.setInt16(index, interleaved[i] * (32767 * volume), true);
                 index += 2;
             }
-            {#return [view];#}
-            return buffer;
+            return [view];
         };
 
         // helper methods to save waves
@@ -118,7 +117,7 @@
         {# Initialize recording states & variables #}
         var record_state = 0;
         var mic, recorder, soundFile;
-        var voice_stream = null;
+        var data_view, audio_file;
         {# Create an audio in #}
         mic = new p5.AudioIn();
         mic.start();
@@ -147,18 +146,23 @@
                     {# Stop the recorder #}
                     recorder.stop();
                     {# Save the soundFile #}
-                    {# p5.prototype.saveSound(soundFile, 'audio.wav'); #}
+                    {# p5.prototype.saveSound(soundFile, 'audio.wav');#}
                     {# Export the soundFile as application/octet-stream #}
 
                     {# voice_stream = toStream(soundFile); #}
-                    arrayBuffer = toStream(soundFile);
-                    uint8Array = new Uint8Array(arrayBuffer);
+                    data_view = toStream(soundFile);
+                    var arrayBuffer = data_view[0].buffer;
+                    var dataArray = new Int16Array(arrayBuffer);
 
-                    console.log(uint8Array);
+                    {#// Convert DataView to Blob#}
+                    {#var type = 'application/octet-stream';#}
+                    {#var blob = new Blob(data_view, { type : type });#}
+                    {#// Convert Blob to File#}
+                    {#audio_file = new File([blob], "audio.wav");#}
 
                     record_state = 0;
                     {# Do submission to let the backend analyze the audio #}
-                    $("#data").val(uint8Array);
+                    $("#data").val(dataArray);
                     $("#submit").click();
                 }
             }
