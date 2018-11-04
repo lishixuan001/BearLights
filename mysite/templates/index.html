@@ -34,12 +34,83 @@
     {# Welcome auto-speaking by webpage when visited #}
     <script>
         $(document).ready (function() {
-            {% if username %}
-                responsiveVoice.speak("Hello" + "{{ username }}" + "! Welcome back to Bear Lights!");
+
+            var welcome_msg = "Hello! Welcome to Bear Lights! Log in is required to move on using our service. ";
+            var instruction_msg = "You can press space to start and stop your voice input. For new users, " +
+                    "please speak 'register'. If you already have an account, please speak 'log in'. ";
+            var final_msg = "";
+            {% if err_msg %}
+                final_msg = {{ err_msg }} + instruction_msg;
             {% else %}
-                responsiveVoice.speak("Hello! Welcome to Bear Lights! Please press space to voice input commands");
+                final_msg = welcome_msg + instruction_msg;
             {% endif %}
+            responsiveVoice.speak(final_msg);
         })
+    </script>
+
+    <script>
+        toStream = function (soundFile) {
+            var leftChannel, rightChannel;
+            leftChannel = soundFile.buffer.getChannelData(0);
+            // handle mono files
+            if (soundFile.buffer.numberOfChannels > 1) {
+              rightChannel = soundFile.buffer.getChannelData(1);
+            } else {
+              rightChannel = leftChannel;
+            }
+            var interleaved = interleave(leftChannel, rightChannel);
+            // create the buffer and view to create the .WAV file
+            var buffer = new window.ArrayBuffer(44 + interleaved.length * 2);
+            var view = new window.DataView(buffer);
+            // write the WAV container,
+            // check spec at: https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+            // RIFF chunk descriptor
+            writeUTFBytes(view, 0, 'RIFF');
+            view.setUint32(4, 36 + interleaved.length * 2, true);
+            writeUTFBytes(view, 8, 'WAVE');
+            // FMT sub-chunk
+            writeUTFBytes(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            // stereo (2 channels)
+            view.setUint16(22, 2, true);
+            view.setUint32(24, 44100, true);
+            view.setUint32(28, 44100 * 4, true);
+            view.setUint16(32, 4, true);
+            view.setUint16(34, 16, true);
+            // data sub-chunk
+            writeUTFBytes(view, 36, 'data');
+            view.setUint32(40, interleaved.length * 2, true);
+            // write the PCM samples
+            var lng = interleaved.length;
+            var index = 44;
+            var volume = 1;
+            for (var i = 0; i < lng; i++) {
+                view.setInt16(index, interleaved[i] * (32767 * volume), true);
+                index += 2;
+            }
+            {#return [view];#}
+            return buffer;
+        };
+
+        // helper methods to save waves
+        function interleave(leftChannel, rightChannel) {
+            var length = leftChannel.length + rightChannel.length;
+            var result = new Float32Array(length);
+            var inputIndex = 0;
+            for (var index = 0; index < length;) {
+                result[index++] = leftChannel[inputIndex];
+                result[index++] = rightChannel[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+        function writeUTFBytes(view, offset, string) {
+            var lng = string.length;
+            for (var i = 0; i < lng; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
     </script>
 
     {# Listen to KeyBoard inputs ('space') and record user's voice input #}
@@ -47,7 +118,7 @@
         {# Initialize recording states & variables #}
         var record_state = 0;
         var mic, recorder, soundFile;
-        var voice_stream;
+        var voice_stream = null;
         {# Create an audio in #}
         mic = new p5.AudioIn();
         mic.start();
@@ -76,48 +147,36 @@
                     {# Stop the recorder #}
                     recorder.stop();
                     {# Save the soundFile #}
-                    {# p5.prototype.saveSound(soundFile, 'voiceInput.wav'); #}
+                    {# p5.prototype.saveSound(soundFile, 'audio.wav'); #}
                     {# Export the soundFile as application/octet-stream #}
-                    voice_stream = p5.prototype.toStream(soundFile);
+
+                    {# voice_stream = toStream(soundFile); #}
+                    arrayBuffer = toStream(soundFile);
+                    uint8Array = new Uint8Array(arrayBuffer);
+
+                    console.log(uint8Array);
+
                     record_state = 0;
+                    {# Do submission to let the backend analyze the audio #}
+                    $("#data").val(uint8Array);
+                    $("#submit").click();
                 }
             }
         });
-
-        if (voice_stream) {
-            {# Create a wave file storing the audio #}
-            var audio_file = new File(
-                voice_stream,
-                'audio.wav',
-                { type: 'application/octet-stream' }
-            );
-
-            var voice_input = $("#voice");
-            voice_input.val(audio_file);
-            var button_submit = $('#submit');
-            button_submit.click();
-        }
     </script>
 
-    <form method = 'post'>
-        <h1>Congrats! Welcome！</h1>
-              <div class="form-group">
-                  <label for="audio"><span style="font-size: medium; display: none">Voice</span></label><br>
-                  <input type='file' class="input form-control" id="audio" name="audio" required>
-              </div>
-              {# Allow user to create a profile by pressing the button #}
-              <div class="form-group" align=center>
-                  <label class="sr-only">Submit Registration</label>
-                  <input class="btn btn-primary" id="submit" type="submit" value="Register">
-              </div>
+    <form method='post'>
+          {% csrf_token %}
+          <h1>Congrats! Welcome！</h1>
+          <div class="form-group">
+              <label for="data"><span style="font-size: medium; display: none">Trash</span></label><br>
+              <input type='text' style="display: none" class="input form-control" id="data" name="data">
+          </div>
+          {# Allow user to create a profile by pressing the button #}
+          <div class="form-group" align=center>
+              <label class="sr-only">Submit</label>
+              <input class="btn btn-primary" style="display: none" id="submit" type="submit" value="Submit">
+          </div>
     </form>
-
-    {% if filename %}
-        <h1>
-            <span style="color: red; font-weight: bold;">
-                Saved filename: {{ filename }}
-            </span>
-        </h1>
-    {% endif %}
 </body>
 </html>

@@ -10,7 +10,7 @@ class Voice(models.Model):
     # file = models.FileField(verbose_name="file", upload_to='voice/%Y/%m/%d/',
     #                         help_text="This is the voice audio file content")
     file = models.BinaryField(default=None)
-    type = models.CharField(default="application/octet-stream")
+    type = models.CharField(default="application/octet-stream", max_length=100)
     # Meta-information.
     added_by = models.ForeignKey(User, verbose_name="added by", null=True, blank=True, editable=False, on_delete=True)
     added_at = models.DateTimeField("added at", auto_now_add=True)

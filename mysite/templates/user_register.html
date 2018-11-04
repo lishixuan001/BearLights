@@ -33,6 +33,9 @@
     {# For Azure Text to Speech #}
     {# <script src="{% static "Text2Speech/require.js" %}"></script> #}
     {# <script src="{% static "Text2Speech/TTSService.js" %}"></script> #}
+    {# Play reminder sound #}
+    <script src='https://code.jquery.com/jquery-2.2.0.min.js'></script>
+    <script src='https://cdn.rawgit.com/admsev/jquery-play-sound/master/jquery.playSound.js'></script>
 
     <style>
         body, html {
@@ -128,49 +131,118 @@
     </script>
 
     <script>
+        toStream = function (soundFile) {
+            var leftChannel, rightChannel;
+            leftChannel = soundFile.buffer.getChannelData(0);
+            // handle mono files
+            if (soundFile.buffer.numberOfChannels > 1) {
+              rightChannel = soundFile.buffer.getChannelData(1);
+            } else {
+              rightChannel = leftChannel;
+            }
+            var interleaved = interleave(leftChannel, rightChannel);
+            // create the buffer and view to create the .WAV file
+            var buffer = new window.ArrayBuffer(44 + interleaved.length * 2);
+            var view = new window.DataView(buffer);
+            // write the WAV container,
+            // check spec at: https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+            // RIFF chunk descriptor
+            writeUTFBytes(view, 0, 'RIFF');
+            view.setUint32(4, 36 + interleaved.length * 2, true);
+            writeUTFBytes(view, 8, 'WAVE');
+            // FMT sub-chunk
+            writeUTFBytes(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            // stereo (2 channels)
+            view.setUint16(22, 2, true);
+            view.setUint32(24, 44100, true);
+            view.setUint32(28, 44100 * 4, true);
+            view.setUint16(32, 4, true);
+            view.setUint16(34, 16, true);
+            // data sub-chunk
+            writeUTFBytes(view, 36, 'data');
+            view.setUint32(40, interleaved.length * 2, true);
+            // write the PCM samples
+            var lng = interleaved.length;
+            var index = 44;
+            var volume = 1;
+            for (var i = 0; i < lng; i++) {
+                view.setInt16(index, interleaved[i] * (32767 * volume), true);
+                index += 2;
+            }
+            return [view];
+        };
+
+        // helper methods to save waves
+        function interleave(leftChannel, rightChannel) {
+            var length = leftChannel.length + rightChannel.length;
+            var result = new Float32Array(length);
+            var inputIndex = 0;
+            for (var index = 0; index < length;) {
+                result[index++] = leftChannel[inputIndex];
+                result[index++] = rightChannel[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+        function writeUTFBytes(view, offset, string) {
+            var lng = string.length;
+            for (var i = 0; i < lng; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+    </script>
+
+    <script>
         var profile_id;
         var username;
 
         {# Generate identificationProfileId by sending requests to Azure #}
         $(document).ready (function() {
-            var params = {
+
+            $(function() {
+                var params = {
                 // Request parameters
-            };
+                };
 
-            var body = {
-                // Request body
-                "locale" : "en-us"
-            };
+                var body = {
+                    // Request body
+                    "locale" : "en-us"
+                };
 
-            $.ajax({
-                url: "https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles?" + $.param(params),
-                beforeSend: function(xhrObj){
-                    var subscription_key = "a35199073e8b4f1b8316d5ef10afafe6";
-                    // Request headers
-                    xhrObj.setRequestHeader("Content-Type","application/json");
-                    xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", subscription_key);
-                },
-                type: "POST",
-                // Request body
-                data: JSON.stringify(body),
-            })
-            .done(function(data) {
-                responsiveVoice.speak("ID generation complete!");
-                profile_id = data["identificationProfileId"];
-            })
-            .fail(function() {
-                responsiveVoice.speak("ID generation failed! Please refresh the page and try again!");
+                $.ajax({
+                    url: "https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles?" + $.param(params),
+                    beforeSend: function(xhrObj){
+                        var subscription_key = "18e041281fd0496bb502bd41328cdd12";
+                        // Request headers
+                        xhrObj.setRequestHeader("Content-Type","application/json");
+                        xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", subscription_key);
+                    },
+                    type: "POST",
+                    // Request body
+                    data: JSON.stringify(body),
+                })
+                .done(function(data) {
+                    responsiveVoice.speak("ID generation complete!");
+                    profile_id = data["identificationProfileId"];
+                })
+                .fail(function() {
+                    responsiveVoice.speak("ID generation failed! Please refresh the page and try again!");
+                });
+
+                {# Direct the user to speak out his/her username #}
+                if (profile_id) {
+                    responsiveVoice.speak("ID Generation complete. Please press space to record your voice for identification. ");
+                }
             });
-
-            {# Direct the user to speak out his/her username #}
-            if (profile_id) {
-                responsiveVoice.speak("ID Generation complete. Please press space to record your voice for identification. ");
-            }
 
             {# Get user's voice input #}
             {# Initialize recording states & variables #}
             var record_state = 0;
             var mic, recorder, soundFile;
+            var voice_stream = null;
             {# Create an audio in #}
             mic = new p5.AudioIn();
             mic.start();
@@ -201,12 +273,41 @@
                         {# Save the soundFile #}
                         {# p5.prototype.saveSound(soundFile, 'voiceInput.wav'); #}
                         {# Export the soundFile as application/octet-stream #}
-                        p5.prototype.toStream(soundFile);
+                        voice_stream = toStream(soundFile);
+                        voiceIdentify(voice_stream);
                         record_state = 0;
                     }
                 }
             });
         })
+    </script>
+
+    <script>
+        function voiceIdentify(voice_stream) {
+                var params = {
+                    // Request parameters
+                    "shortAudio": true,
+                };
+
+                $.ajax({
+                    url: "https://westus.api.cognitive.microsoft.com/spid/v1.0/identificationProfiles/{identificationProfileId}/enroll?" + $.param(params),
+                    beforeSend: function(xhrObj){
+                        var subscription_key = "18e041281fd0496bb502bd41328cdd12";
+                        // Request headers
+                        xhrObj.setRequestHeader("Content-Type","application/octet-stream");
+                        xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", subscription_key);
+                    },
+                    type: "POST",
+                    // Request body
+                    data: voice_stream,
+                })
+                .done(function(data) {
+                    alert("success");
+                })
+                .fail(function() {
+                    alert("error");
+                });
+            }
     </script>
 
     <div class="container">
