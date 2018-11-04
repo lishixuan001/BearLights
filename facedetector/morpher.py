@@ -254,10 +254,10 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	right_crop = warp_image(src_face, right_eye, right_eye, size)
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
 	right_crop_file = io.BytesIO()
-	#imsave(right_crop_file, right_crop, format='png')
+	imsave(right_crop_file, right_crop, format='png')
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
 	right_crop_comb_file = io.BytesIO()
-	#imsave(right_crop_comb_file, right_crop_comb, format='png')
+	imsave(right_crop_comb_file, right_crop_comb, format='png')
 	#plt.imshow(right_crop)
 	#plt.show()
 	#plt.imshow(right_crop_comb)
@@ -405,7 +405,7 @@ def main():
 		print("Nose is good")
 	else:
 		print("Not done with nose")
-	if score[3]*(1.9-res[3])<= 60:
+	if score[3]*(1.9-res[3])<= 80:
 		print("Mouth is good")
 	else:
 		print("Not done with mouth")
