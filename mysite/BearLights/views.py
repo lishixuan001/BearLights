@@ -5,7 +5,9 @@ from watson_developer_cloud import SpeechToTextV1
 from watson_developer_cloud.websocket import RecognizeCallback, AudioSource
 import threading
 import os
-import scipy.io as spio
+import wavio
+import numpy as np
+import js2py
 
 from django.shortcuts import render
 from django.http import HttpResponse
@@ -17,7 +19,6 @@ from django.template import RequestContext
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-
 
 
 from BearLights.models import *
@@ -34,50 +35,53 @@ def index(request):
     if request.method == "POST":
         audio_form = IndexForm(request.POST)
         if audio_form.is_valid():
+            # Get data from the form
             audio_string = audio_form.cleaned_data['data']
+            audio_data_string = audio_string.strip().split(",")
+            audio_data = [int(num) for num in audio_data_string]
 
-            file_path = "sound.wav"
+            # Extract single channel (sampwidth=1) from the data
+            extract_data = audio_data[1::2]
 
-            wav_file = open(file_path, 'wb')
-            audio_data = audio_string.strip().split(",")
-            for num in audio_data:
-                num = int(num)
-                num_byte = num.to_bytes((num.bit_length() + 7) // 8, byteorder='big')
-                wav_file.write(num_byte)
-            wav_file.close()
+            # Transform the audio data into np array integers
+            audio_np_array = np.array(extract_data)
 
-            read_file = open(file_path, 'rb')
-            print(read_file.readlines())
+            # Transform the np array in to .wav file
+            filename = "audio.wav"
+            wavio.write(filename, audio_np_array, rate=44100, scale=None, sampwidth=1)
 
-        # If service instance provides API key authentication
-        service = SpeechToTextV1 (
-            ## url is optional, and defaults to the URL below. Use the correct URL for your region.
-            url='https://gateway-wdc.watsonplatform.net/speech-to-text/api',
-            iam_apikey='iI6HjiOk8o2mMa86Nic4cSgAF9Sqhhp0bIoGcGo1BT63'
-        )
+            # If service instance provides API key authentication
+            service = SpeechToTextV1 (
+                ## url is optional, and defaults to the URL below. Use the correct URL for your region.
+                url='https://gateway-wdc.watsonplatform.net/speech-to-text/api',
+                iam_apikey='iI6HjiOk8o2mMa86Nic4cSgAF9Sqhhp0bIoGcGo1BT63'
+            )
 
-        with open(file_path, 'rb') as audio_file:
-            result = service.recognize (
-                        audio=audio_file,
-                        content_type='audio/wav',
-                        timestamps=True,
-                        word_confidence=True
-                        ).get_result()
-            text = result["results"][0]["alternatives"][0]["transcript"]
-
-            print(text)
-
-        os.remove(file_path)
-
-        # Check if page jumping is needed
-        if "log in" in text:
-            return HttpResponseRedirect('/accounts/login/')
-        elif "register" in text:
-            return HttpResponseRedirect('/accounts/register/')
-        else:
-            err_msg = "Sorry, we did not understand your command."
-            context.update({"err_msg": err_msg})
-            render(request, 'index.html', context)
+            with open(filename, 'rb') as audio_file:
+                result = service.recognize (
+                            audio=audio_file,
+                            content_type='audio/wav',
+                            timestamps=True,
+                            word_confidence=True
+                            ).get_result()
+                try:
+                    text = result["results"][0]["alternatives"][0]["transcript"]
+                    # Print out text content for quick check
+                    print("======================\n{}\n======================".format(text))
+                    # Check if page jumping is needed
+                    if "log in" in text:
+                        return HttpResponseRedirect('/accounts/login/')
+                    elif "register" in text:
+                        return HttpResponseRedirect('/accounts/register/')
+                    elif "profile" in text:
+                        return HttpResponseRedirect('/accounts/profile/')
+                    else:
+                        err_msg = "Sorry, we did not understand your command."
+                        context.update({"err_msg": err_msg})
+                        render(request, 'index.html', context)
+                    os.remove(filename)
+                except:
+                    print(result)
 
     return render(request, 'index.html', context)
 
