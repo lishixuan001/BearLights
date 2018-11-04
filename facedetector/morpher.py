@@ -214,7 +214,8 @@ def morpher(source, dest, background='black'):
 	dest_img, dest_points=resize_align(img, points, size)
 	return morph(src_img, src_points, dest_img, dest_points, width, height, background)
 
-def grade(combined_face, combined_points, finished_face):
+def grade(finished_face, parts, source, dest):
+	combined_face, combined_points=morpher(source, dest)
 	width, height=500, 600
 	size=(width, height)
 	img = cv2.imread(os.path.join(sys.path[0], finished_face))
@@ -223,10 +224,10 @@ def grade(combined_face, combined_points, finished_face):
 		print('No face in source')
 		return None
 	src_img, src_points=resize_align(img, points, size)
-	return grade_by_pix(src_img, src_points, combined_face, combined_points, width, height)
+	return grade_by_pix(src_img, src_points, combined_face, combined_points, width, height, parts)
 
 
-def grade_by_pix(src_img, src_points, combined_face, combined_points, width, height):
+def grade_by_pix(src_img, src_points, combined_face, combined_points, width, height, parts):
 	size=(width, height)
 	points = combined_points
 	src_img=src_img[:,:,::-1]
@@ -244,98 +245,102 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	# # left_eye=np.hstack([points[17:22],points[36:40]])
 	# # right_eye=np.hstack([points[22:27],points[43:47]])
 	# # right_eye=np.array([[points[i][0] for i in range(22, 27)] + [points[i][0] for i in range(42, 46)], [points[i][1] for i in range(22, 27)] + [points[i][1] for i in range(42, 46)]])
-	right_eye = []
-	for i in range(22, 27):
-		right_eye.append(list(points[i]))
-	for i in range(43, 48):
-		right_eye.append(list(points[i]))
-	right_eye=np.array(right_eye).reshape((len(right_eye), 2))
+	if parts == "eyes":
+		log=[]
+		right_eye = []
+		for i in range(22, 27):
+			right_eye.append(list(points[i]))
+		for i in range(43, 48):
+			right_eye.append(list(points[i]))
+		right_eye=np.array(right_eye).reshape((len(right_eye), 2))
 
-	right_crop = warp_image(src_face, right_eye, right_eye, size)
-	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
-	right_crop_file = io.BytesIO()
-	imsave(right_crop_file, right_crop, format='png')
-	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
-	right_crop_comb_file = io.BytesIO()
-	imsave(right_crop_comb_file, right_crop_comb, format='png')
-	#plt.imshow(right_crop)
-	#plt.show()
-	#plt.imshow(right_crop_comb)
-	#plt.show()
-	result = get_grade(right_crop_file, right_crop_comb_file)
-	right_crop_file.close()
-	right_crop_comb_file.close()
-	results.append(result)
-	results1.append(get_image_difference(right_crop, right_crop_comb))
+		right_crop = warp_image(src_face, right_eye, right_eye, size)
+		right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
+		right_crop_file = io.BytesIO()
+		imsave(right_crop_file, right_crop, format='png')
+		right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
+		right_crop_comb_file = io.BytesIO()
+		imsave(right_crop_comb_file, right_crop_comb, format='png')
+		result = get_grade(right_crop_file, right_crop_comb_file)
+		right_crop_file.close()
+		right_crop_comb_file.close()
+		results.append(result)
+		results1.append(get_image_difference(right_crop, right_crop_comb))
+		log.append(results1[0]*(1.7-results[0])<= 150)
 
-	left_eye=[]
-	for i in range(17, 22):
-		left_eye.append(points[i])
-	for i in range(36, 40):
-		left_eye.append(points[i])
-	left_eye=np.array(left_eye).reshape((len(left_eye), 2))
-	left_crop = warp_image(src_face, left_eye, left_eye, size)
-	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
-	left_crop_file = io.BytesIO()
-	imsave(left_crop_file, left_crop, format='png')
-	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
-	left_crop_comb_file = io.BytesIO()
-	imsave(left_crop_comb_file, left_crop_comb, format='png')
-	#plt.imshow(left_crop)
-	#plt.show()
-	#plt.imshow(left_crop_comb)
-	#plt.show()
-	left_eye_bound=boundary_points(np.array(left_eye))
-	result = get_grade(left_crop_file, left_crop_comb_file)
-	left_crop_file.close()
-	left_crop_comb_file.close()
-	results.append(result)
-	results1.append(get_image_difference(left_crop, left_crop_comb))
+		left_eye=[]
+		for i in range(17, 22):
+			left_eye.append(points[i])
+		for i in range(36, 40):
+			left_eye.append(points[i])
+		left_eye=np.array(left_eye).reshape((len(left_eye), 2))
+		left_crop = warp_image(src_face, left_eye, left_eye, size)
+		left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
+		left_crop_file = io.BytesIO()
+		imsave(left_crop_file, left_crop, format='png')
+		left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
+		left_crop_comb_file = io.BytesIO()
+		imsave(left_crop_comb_file, left_crop_comb, format='png')
+		left_eye_bound=boundary_points(np.array(left_eye))
+		result = get_grade(left_crop_file, left_crop_comb_file)
+		left_crop_file.close()
+		left_crop_comb_file.close()
+		results.append(result)
+		results1.append(get_image_difference(left_crop, left_crop_comb))
+		log.append(results1[1]*(1.7-results[1])<= 230)
 
-	nose=[]
-	for i in range(30, 36):
-		nose.append(points[i])
-	nose=np.array(nose).reshape((len(nose), 2))
-	nose_crop = warp_image(src_face, nose, nose, size)
-	nose_crop_comb = warp_image(combined_face, nose, nose, size)
-	nose_crop_file = io.BytesIO()
-	imsave(nose_crop_file, nose_crop, format='png')
-	nose_crop_comb = warp_image(combined_face, nose, nose, size)
-	nose_crop_comb_file = io.BytesIO()
-	imsave(nose_crop_comb_file, nose_crop_comb, format='png')
-	#plt.imshow(nose_crop)
-	#plt.show()
-	#plt.imshow(nose_crop_comb)
-	#plt.show()
-	nose_bound=boundary_points(np.array(nose))
-	result = get_grade(nose_crop_file, nose_crop_comb_file)
-	nose_crop_file.close()
-	nose_crop_comb_file.close()
-	results.append(result)
-	results1.append(get_image_difference(nose_crop, nose_crop_comb))
+		return log
 
+	if parts =="nose":
+		log=[]
+		nose=[]
+		for i in range(30, 36):
+			nose.append(points[i])
+		nose=np.array(nose).reshape((len(nose), 2))
+		nose_crop = warp_image(src_face, nose, nose, size)
+		nose_crop_comb = warp_image(combined_face, nose, nose, size)
+		nose_crop_file = io.BytesIO()
+		imsave(nose_crop_file, nose_crop, format='png')
+		nose_crop_comb = warp_image(combined_face, nose, nose, size)
+		nose_crop_comb_file = io.BytesIO()
+		imsave(nose_crop_comb_file, nose_crop_comb, format='png')
+		#plt.imshow(nose_crop)
+		#plt.show()
+		#plt.imshow(nose_crop_comb)
+		#plt.show()
+		nose_bound=boundary_points(np.array(nose))
+		result = get_grade(nose_crop_file, nose_crop_comb_file)
+		nose_crop_file.close()
+		nose_crop_comb_file.close()
+		results.append(result)
+		results1.append(get_image_difference(nose_crop, nose_crop_comb))
+		log.append(results1[0]*(1.9-results[0])<= 150)
+		return log
 
-	mouth=[]
-	for i in range(48, 68):
-		mouth.append(points[i])
-	mouth=np.array(mouth).reshape((len(mouth), 2))
-	mouth_crop = warp_image(src_face, mouth, mouth, size)
-	mouth_crop_file = io.BytesIO()
-	imsave(mouth_crop_file, mouth_crop, format='png')
-	mouth_crop_comb = warp_image(combined_face, mouth, mouth, size)
-	mouth_crop_comb_file = io.BytesIO()
-	imsave(mouth_crop_comb_file, mouth_crop_comb, format='png')
-	#plt.imshow(mouth_crop)
-	#plt.show()
-	#plt.imshow(mouth_crop_comb)
-	#plt.show()
-	mouth_bound=boundary_points(np.array(mouth))
-	result = get_grade(mouth_crop_file, mouth_crop_comb_file)
-	mouth_crop_file.close()
-	mouth_crop_comb_file.close()
-	results.append(result)
-	results1.append(get_image_difference(mouth_crop, mouth_crop_comb))
-	return results, results1
+	if parts == "mouth":
+		log=[]
+		mouth=[]
+		for i in range(48, 68):
+			mouth.append(points[i])
+		mouth=np.array(mouth).reshape((len(mouth), 2))
+		mouth_crop = warp_image(src_face, mouth, mouth, size)
+		mouth_crop_file = io.BytesIO()
+		imsave(mouth_crop_file, mouth_crop, format='png')
+		mouth_crop_comb = warp_image(combined_face, mouth, mouth, size)
+		mouth_crop_comb_file = io.BytesIO()
+		imsave(mouth_crop_comb_file, mouth_crop_comb, format='png')
+		#plt.imshow(mouth_crop)
+		#plt.show()
+		#plt.imshow(mouth_crop_comb)
+		#plt.show()
+		mouth_bound=boundary_points(np.array(mouth))
+		result = get_grade(mouth_crop_file, mouth_crop_comb_file)
+		mouth_crop_file.close()
+		mouth_crop_comb_file.close()
+		results.append(result)
+		results1.append(get_image_difference(mouth_crop, mouth_crop_comb))
+		log.append(results[0]*(1.9-results[0])<= 80)
+		return log
 
 def detect_properties(path):
     """Detects image properties in the file."""
@@ -386,30 +391,14 @@ def get_image_difference(imageA, imageB):
 	# the two images are
 	return err
 
-def main():
-	source, dest = 'pic1.jpg', 'pic3.jpg'
-	face, points=morpher(source, dest)
-	# plt.imshow(face)
-	# plt.show()
-	finished = 'pic3.jpg'
-	res, score = grade(face, points, finished)
-	if score[0]*(1.7-res[0])<= 150:
-		print("Right eye is good")
-	else:
-		print("Not done with right eye")
-	if score[1]*(1.7-res[1])<= 220:
-		print("Left eye is good")
-	else:
-		print("Not done with left eye")
-	if score[2]*(1.9-res[2])<= 150:
-		print("Nose is good")
-	else:
-		print("Not done with nose")
-	if score[3]*(1.9-res[3])<= 80:
-		print("Mouth is good")
-	else:
-		print("Not done with mouth")
+# def main():
+# 	source, dest = 'pic2.jpg', 'pic3.jpg'
+# 	finished = 'pic2.jpg'
+# 	parts='mouth'
+# 	res = grade(finished, parts, source, dest)
+# 	print(res)
 
 
-if __name__ == "__main__":
-	main()
+
+# if __name__ == "__main__":
+# 	main()
