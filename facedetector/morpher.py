@@ -41,11 +41,13 @@ def weighted_average_points(start_points, end_points, percent=0.5):
 def morph(src_img, src_points, dest_img, dest_points, width=500, height=600, background='black'):
 	size = (width, height)
 	points = weighted_average_points(src_points, dest_points, 1)
+
 	src_face = warp_image(src_img, src_points, points, size)
 	end_face = warp_image(dest_img, dest_points, points, size)
 	average_face = weighted_average(src_face, end_face, 0.5)[:,:,::-1]
 	# gray_image = cv2.cvtColor(average_face, cv2.COLOR_BGR2GRAY)
 	# edges = feature.canny(gray_image)
+	cv2.imwrite('messigray.png',average_face[:,:,::-1])
 	return average_face, points
 
 #def ranking(src_img, src_points, dest_img, dest_points):
@@ -224,12 +226,15 @@ def grade(combined_face, combined_points, finished_face):
 	src_img, src_points=resize_align(img, points, size)
 	return grade_by_pix(src_img, src_points, combined_face, combined_points, width, height)
 
+
 def grade_by_pix(src_img, src_points, combined_face, combined_points, width, height):
 	size=(width, height)
 	points = combined_points
 	src_img=src_img[:,:,::-1]
+	src_img=cv2.normalize(src_img, None, 0,255,cv2.NORM_MINMAX)
+	combined_face=cv2.normalize(combined_face, None, 0,255,cv2.NORM_MINMAX)
 	plt.imshow(combined_face)
-	# plt.show()
+	#plt.show()
 	src_face = warp_image(src_img, src_points, combined_points, size)
 	# gray_image = cv2.cvtColor(src_face, cv2.COLOR_RGB2GRAY)
 	# edges = feature.canny(gray_image)
@@ -237,8 +242,9 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	for i in points:
 		x, y =i[0], i[1]
 		plt.scatter(x, y, s=5, c='red', marker='o')
-	# plt.show()
-	
+	#plt.show()
+	results=[]
+	results1=[]
 	# # left_eye=np.hstack([points[17:22],points[36:40]])
 	# # right_eye=np.hstack([points[22:27],points[43:47]])
 	# # right_eye=np.array([[points[i][0] for i in range(22, 27)] + [points[i][0] for i in range(42, 46)], [points[i][1] for i in range(22, 27)] + [points[i][1] for i in range(42, 46)]])
@@ -251,12 +257,20 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 
 	right_crop = warp_image(src_face, right_eye, right_eye, size)
 	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
+	right_crop_file = io.BytesIO()
+	imsave(right_crop_file, right_crop, format='png')
+	right_crop_comb = warp_image(combined_face, right_eye, right_eye, size)
+	right_crop_comb_file = io.BytesIO()
+	imsave(right_crop_comb_file, right_crop_comb, format='png')
 	plt.imshow(right_crop)
-	# plt.show()
-	right_eye_bound=boundary_points(np.array(right_eye))
+	#plt.show()
 	plt.imshow(right_crop_comb)
-	# plt.show()
-	
+	#plt.show()
+	result = get_grade(right_crop_file, right_crop_comb_file)
+	right_crop_file.close()
+	right_crop_comb_file.close()
+	results.append(result)
+	results1.append(get_image_difference(right_crop, right_crop_comb))
 
 	left_eye=[]
 	for i in range(17, 22):
@@ -266,11 +280,21 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	left_eye=np.array(left_eye).reshape((len(left_eye), 2))
 	left_crop = warp_image(src_face, left_eye, left_eye, size)
 	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
+	left_crop_file = io.BytesIO()
+	imsave(left_crop_file, left_crop, format='png')
+	left_crop_comb = warp_image(combined_face, left_eye, left_eye, size)
+	left_crop_comb_file = io.BytesIO()
+	imsave(left_crop_comb_file, left_crop_comb, format='png')
 	plt.imshow(left_crop)
-	# plt.show()
+	#plt.show()
 	plt.imshow(left_crop_comb)
-	# plt.show()
+	#plt.show()
 	left_eye_bound=boundary_points(np.array(left_eye))
+	result = get_grade(left_crop_file, left_crop_comb_file)
+	left_crop_file.close()
+	left_crop_comb_file.close()
+	results.append(result)
+	results1.append(get_image_difference(left_crop, left_crop_comb))
 
 	nose=[]
 	for i in range(30, 36):
@@ -278,11 +302,22 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	nose=np.array(nose).reshape((len(nose), 2))
 	nose_crop = warp_image(src_face, nose, nose, size)
 	nose_crop_comb = warp_image(combined_face, nose, nose, size)
+	nose_crop_file = io.BytesIO()
+	imsave(nose_crop_file, nose_crop, format='png')
+	nose_crop_comb = warp_image(combined_face, nose, nose, size)
+	nose_crop_comb_file = io.BytesIO()
+	imsave(nose_crop_comb_file, nose_crop_comb, format='png')
 	plt.imshow(nose_crop)
-	# plt.show()
+	#plt.show()
 	plt.imshow(nose_crop_comb)
-	# plt.show()
+	#plt.show()
 	nose_bound=boundary_points(np.array(nose))
+	result = get_grade(nose_crop_file, nose_crop_comb_file)
+	nose_crop_file.close()
+	nose_crop_comb_file.close()
+	results.append(result)
+	results1.append(get_image_difference(nose_crop, nose_crop_comb))
+
 
 	mouth=[]
 	for i in range(48, 68):
@@ -295,15 +330,16 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	mouth_crop_comb_file = io.BytesIO()
 	imsave(mouth_crop_comb_file, mouth_crop_comb, format='png')
 	plt.imshow(mouth_crop)
-	# plt.show()
+	#plt.show()
 	plt.imshow(mouth_crop_comb)
-	# plt.show()
+	#plt.show()
 	mouth_bound=boundary_points(np.array(mouth))
 	result = get_grade(mouth_crop_file, mouth_crop_comb_file)
 	mouth_crop_file.close()
 	mouth_crop_comb_file.close()
-	return result
-
+	results.append(result)
+	results1.append(get_image_difference(mouth_crop, mouth_crop_comb))
+	return results, results1
 
 def detect_properties(path):
     """Detects image properties in the file."""
@@ -340,14 +376,45 @@ def get_grade(path1, path2):
     #         color_properties_2 += [0, 0, 0, 0]
     #     elif len(color_properties_2) > len(color_properties_1):
     #         color_properties_1 += [0, 0, 0, 0]
-    return 1 - np.linalg.norm(np.array(color_properties_1[-2]) - np.array(color_properties_2[-2]))/441.672956
+
+    return 1 - np.linalg.norm(np.array(color_properties_1[-2])-np.array(color_properties_2[-2]))/441.672956
+
+def get_image_difference(imageA, imageB):
+	# the 'Mean Squared Error' between the two images is the
+	# sum of the squared difference between the two images;
+	# NOTE: the two images must have the same dimension
+	err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+	err /= float(imageA.shape[0] * imageA.shape[1])
+	
+	# return the MSE, the lower the error, the more "similar"
+	# the two images are
+	return err
 
 def main():
-	source, dest = 'pic1.jpg', 'pic4.jpg'
+	source, dest = 'pic1.jpg', 'pic3.jpg'
 	face, points=morpher(source, dest)
-	finished = 'pic2.jpg'
-	score = grade(face, points, finished)
+	# plt.imshow(face)
+	# plt.show()
+	finished = 'pic3.jpg'
+	res, score = grade(face, points, finished)
+	print(res)
 	print(score)
+	if score[0]*(1.7-res[0])<= 150:
+		print("Right eye is good")
+	else:
+		print("Not done with right eye")
+	if score[1]*(1.7-res[1])<= 220:
+		print("Left eye is good")
+	else:
+		print("Not done with left eye")
+	if score[2]*(1.9-res[2])<= 150:
+		print("Nose is good")
+	else:
+		print("Not done with nose")
+	if score[3]*(1.9-res[3])<= 60:
+		print("Mouth is good")
+	else:
+		print("Not done with mouth")
 
 
 if __name__ == "__main__":
