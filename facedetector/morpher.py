@@ -8,6 +8,8 @@ import dlib
 import scipy.spatial as spatial
 from builtins import range
 from skimage import feature
+import io
+from google.cloud import vision
 
 def triangular_affine_matrices(vertices, src_points, dest_points):
 	ones = [1, 1, 1]
@@ -291,6 +293,18 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	plt.show()
 	mouth_bound=boundary_points(np.array(mouth))
 
+def get_grade(path1, path2):
+    """
+        Grades the image at path2 based on the differences in properties of the image at path1
+    """
+    color_properties_1 = np.array(max(detect_properties(path1), key=lambda x: x[0]))
+    color_properties_2 = np.array(max(detect_properties(path2), key=lambda x: x[0]))
+    # while len(color_properties_2) != len(color_properties_1):
+    #     if len(color_properties_1) > len(color_properties_2):
+    #         color_properties_2 += [0, 0, 0, 0]
+    #     elif len(color_properties_2) > len(color_properties_1):
+    #         color_properties_1 += [0, 0, 0, 0]
+    return 1 - np.linalg.norm(color_properties_1 - color_properties_2)/441.672956
 
 def main():
 	source, dest = 'pic1.jpg', 'pic4.jpg'
