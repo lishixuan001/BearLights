@@ -9,29 +9,23 @@ from scipy.misc import imsave
 def detect_properties(path):
     """Detects image properties in the file."""
     client = vision.ImageAnnotatorClient()
-
+    
     with io.open(path, 'rb') as image_file:
         content = image_file.read()
-
+    
     image = vision.types.Image(content=content)
 
-<<<<<<< HEAD
 response = client.image_properties(image=image)
 props = response.image_properties_annotation
-    print('Properties:')
-    
-=======
-    response = client.image_properties(image=image)
-    props = response.image_properties_annotation
     # print('Properties:')
-
+    
     # for color in props.dominant_colors.colors:
     #     print('fraction: {}'.format(color.pixel_fraction))
     #     print('\tr: {}'.format(color.color.red))
     #     print('\tg: {}'.format(color.color.green))
     #     print('\tb: {}'.format(color.color.blue))
     #     print('\ta: {}'.format(color.color.alpha))
-
+    
     return [[color.pixel_fraction, color.color.red, color.color.green, color.color.blue] for color in props.dominant_colors.colors]
 
 
@@ -39,7 +33,7 @@ props = response.image_properties_annotation
 def get_grade(path1, path2):
     """
         Grades the image at path2 based on the differences in properties of the image at path1
-    """
+        """
     color_properties_1 = np.array(max(detect_properties(path1), key=lambda x: x[0]))
     color_properties_2 = np.array(max(detect_properties(path2), key=lambda x: x[0]))
     # while len(color_properties_2) != len(color_properties_1):
@@ -50,7 +44,7 @@ def get_grade(path1, path2):
     return 1 - np.linalg.norm(color_properties_1 - color_properties_2)/441.672956
 
 """Provide RGB color constants and a colors dictionary with
-elements formatted: colors[colorname] = CONSTANT"""
+    elements formatted: colors[colorname] = CONSTANT"""
 
 from collections import namedtuple, OrderedDict
 
@@ -1179,24 +1173,23 @@ colors = OrderedDict(sorted(colors.items(), key=lambda t: t[0]))
 
 def contains(name, image):
     c = colors[name]
-
+    
     client = vision.ImageAnnotatorClient()
-
+    
     if isinstance(image, str):
         with io.open(image, 'rb') as image_file:
             content = image_file.read()
-
+    
         image = vision.types.Image(content=content)
-
+        
         response = client.image_properties(image=image)
-        props = response.image_properties_annotation
-    else:
-        temp_buffer = io.BytesIO()
-        imsave(temp_buffer, np.array(image), format='png')
-        image = vision.types.Image(content=temp_buffer.getvalue())
-        response = client.image_properties(image=image)
-        props = response.image_properties_annotation
->>>>>>> 6ce595c051ac061f8041e32b13cd13cec3ef7103
+    props = response.image_properties_annotation
+else:
+    temp_buffer = io.BytesIO()
+    imsave(temp_buffer, np.array(image), format='png')
+    image = vision.types.Image(content=temp_buffer.getvalue())
+    response = client.image_properties(image=image)
+    props = response.image_properties_annotation
     for color in props.dominant_colors.colors:
         print("{},{},{}".format(color.color.red, color.color.green, color.color.blue))
         if abs(color.color.red - c.red) + abs(color.color.green - c.green) + abs(color.color.blue - c.blue) <= 40:
