@@ -12,6 +12,7 @@ import io
 from google.cloud import vision
 from scipy.misc import imsave
 from PIL import Image
+import base64
 
 def triangular_affine_matrices(vertices, src_points, dest_points):
 	ones = [1, 1, 1]
@@ -228,7 +229,7 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	points = combined_points
 	src_img=src_img[:,:,::-1]
 	plt.imshow(combined_face)
-	plt.show()
+	# plt.show()
 	src_face = warp_image(src_img, src_points, combined_points, size)
 	# gray_image = cv2.cvtColor(src_face, cv2.COLOR_RGB2GRAY)
 	# edges = feature.canny(gray_image)
@@ -236,7 +237,7 @@ def grade_by_pix(src_img, src_points, combined_face, combined_points, width, hei
 	for i in points:
 		x, y =i[0], i[1]
 		plt.scatter(x, y, s=5, c='red', marker='o')
-	plt.show()
+	# plt.show()
 	
 	# # left_eye=np.hstack([points[17:22],points[36:40]])
 	# # right_eye=np.hstack([points[22:27],points[43:47]])
@@ -308,10 +309,10 @@ def detect_properties(path):
     """Detects image properties in the file."""
     client = vision.ImageAnnotatorClient()
 
-    with Image.open(path) as image_file:
-        content = image_file.read()
+    # with Image.open(path) as image_file:
+    # 	content = image_file.tobytes().read()
 
-    image = vision.types.Image(content=content)
+    image = vision.types.Image(content=path.getvalue())
 
     response = client.image_properties(image=image)
     props = response.image_properties_annotation
@@ -330,20 +331,23 @@ def get_grade(path1, path2):
     """
         Grades the image at path2 based on the differences in properties of the image at path1
     """
-    color_properties_1 = np.array(max(detect_properties(path1), key=lambda x: x[0]))
-    color_properties_2 = np.array(max(detect_properties(path2), key=lambda x: x[0]))
+    color_properties_1 = detect_properties(path1)
+    color_properties_1.sort(key=lambda x: x[0])
+    color_properties_2 = detect_properties(path2)
+    color_properties_2.sort(key=lambda x: x[0])
     # while len(color_properties_2) != len(color_properties_1):
     #     if len(color_properties_1) > len(color_properties_2):
     #         color_properties_2 += [0, 0, 0, 0]
     #     elif len(color_properties_2) > len(color_properties_1):
     #         color_properties_1 += [0, 0, 0, 0]
-    return 1 - np.linalg.norm(color_properties_1 - color_properties_2)/441.672956
+    return 1 - np.linalg.norm(np.array(color_properties_1[-2]) - np.array(color_properties_2[-2]))/441.672956
 
 def main():
 	source, dest = 'pic1.jpg', 'pic4.jpg'
 	face, points=morpher(source, dest)
 	finished = 'pic2.jpg'
 	score = grade(face, points, finished)
+	print(score)
 
 
 if __name__ == "__main__":
