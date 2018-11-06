@@ -24,13 +24,144 @@
     <script src="{% static "p5/addons/p5.sound.js" %}"></script>
     <script src="{% static "p5/addons/p5.dom.js" %}"></script>
     <script src="{% static "recorder/recorder.js" %}"></script>
+    <script src="{% static "js/toStream.js" %}"></script>
     {# Play reminder sound #}
     <script src='https://code.jquery.com/jquery-2.2.0.min.js'></script>
     <script src='https://cdn.rawgit.com/admsev/jquery-play-sound/master/jquery.playSound.js'></script>
+    {# Call Camera #}
+{#    <script src="{% static "js/camera.js" %}"></script>#}
+    {# Call Capture #}
+
+    <link rel="canonical" href="https://simpl.info/mediarecorder" />
+
+    <style>
+        .booth {
+            width: 400px;
+            background-color: #ccc;
+            border: 10px solid #ddd;
+            margin: 0 auto;
+        }
+        .booth-capture-button {
+            display: block;
+            margin: 10px 0;
+            padding: 10px 20px;
+            background-color: cornflowerblue;
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+        }
+    </style>
+
 </head>
 <body>
-    <p>
-        Hi {{ username }}! Welcome to your profile page!
-    </p>
+    <script>
+        {% if err_msg %}
+            responsiveVoice.speak("{{ err_msg }}");
+        {% else %}
+            {% if take_photo %}
+                responsiveVoice.speak("Please hold your position for 3 seconds. ");
+            {% else %}
+                responsiveVoice.speak("Welcome to profile page!");
+            {% endif %}
+        {% endif %}
+    </script>
+
+    {# Listen to KeyBoard inputs ('space') and record user's voice input #}
+    <script>
+        {# Initialize recording states & variables #}
+        var record_state = 0;
+        var mic, recorder, soundFile;
+        var data_view, audio_file;
+        {# Create an audio in #}
+        mic = new p5.AudioIn();
+        mic.start();
+        {# Create a sound recorder #}
+        recorder = new p5.SoundRecorder();
+        {# Connect the mic to the recorder #}
+        recorder.setInput(mic);
+        {# Create a sound file to save #}
+        soundFile = new p5.SoundFile();
+
+        {# Respond to key press #}
+        $(document).keypress(function(event) {
+            var code = event.keyCode ? event.keyCode : e.which;
+            {# Respond if user press 'space' key #}
+            if (code === 32) {
+                {# If in static state (record_state = 0) and microphone accessibility enabled#}
+                if (record_state === 0 && mic.enabled) {
+                    $.playSound("http://data.huiyi8.com/2017/gha/03/17/1702.mp3");
+                    {# Start recording into the soundFile #}
+                    recorder.record(soundFile);
+                    {# Update record_state = 1 (recording mode) #}
+                    record_state = 1;
+                }
+                else {
+                    $.playSound("http://data.huiyi8.com/2017/gha/03/17/1702.mp3");
+                    {# Stop the recorder #}
+                    recorder.stop();
+                    {# Save the soundFile #}
+                    {# p5.prototype.saveSound(soundFile, 'audio.wav');#}
+                    {# Export the soundFile as application/octet-stream #}
+
+                    {# voice_stream = toStream(soundFile); #}
+                    data_view = toStream(soundFile);
+                    var arrayBuffer = data_view[0].buffer;
+                    var dataArray = new Int16Array(arrayBuffer);
+
+                    {#// Convert DataView to Blob#}
+                    {#var type = 'application/octet-stream';#}
+                    {#var blob = new Blob(data_view, { type : type });#}
+                    {#// Convert Blob to File#}
+                    {#audio_file = new File([blob], "audio.wav");#}
+
+                    record_state = 0;
+                    {# Do submission to let the backend analyze the audio #}
+                    $("#index").val("0");
+                    $("#data").val(dataArray);
+                    $("#submit").click();
+                }
+            }
+        });
+    </script>
+
+    {% if take_photo %}
+        <script defer>
+            function take_photo() {
+                $("#index").val("1");
+                $("#capture").click();
+            }
+            window.onload = function () {
+                setTimeout(take_photo, 5000);
+            };
+        </script>
+    {% endif %}
+
+    <div class="booth">
+        <video id="video" width="400" height="300" autoplay=""></video>
+{#        <a href="#" id="capture" style="display: none" class="booth-capture-button">Take Photo</a>#}
+        <button id="capture" style="display: none" class="booth-capture-button"></button>
+        <canvas id="canvas" style="display: none" width="400" height="300"></canvas>
+        <img id="photo" src="http://placekitten.com/g/400/300" alt="Photo of you">
+    </div>
+
+    <form method='post'>
+          {% csrf_token %}
+          <div class="form-group">
+              <label for="index"><span style="font-size: medium; display: none">Data</span></label><br>
+              <input type='text' style="display: none" class="input form-control" id="index" name="index">
+          </div>
+          <div class="form-group">
+              <label for="data"><span style="font-size: medium; display: none">Data</span></label><br>
+              <input type='text' style="display: none" class="input form-control" id="data" name="data">
+          </div>
+          {# Allow user to create a profile by pressing the button #}
+          <div class="form-group" align=center>
+              <label class="sr-only">Submit</label>
+              <input class="btn btn-primary" style="display: none" id="submit" type="submit" value="Submit">
+          </div>
+    </form>
+
+    <script src="{% static "js/photo.js" %}"></script>
+
 </body>
 </html>

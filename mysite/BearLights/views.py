@@ -5,6 +5,7 @@ from watson_developer_cloud import SpeechToTextV1
 from watson_developer_cloud.websocket import RecognizeCallback, AudioSource
 import threading
 import os
+import base64
 import wavio
 import numpy as np
 import js2py
@@ -50,38 +51,21 @@ def index(request):
             filename = "audio.wav"
             wavio.write(filename, audio_np_array, rate=44100, scale=None, sampwidth=1)
 
-            # If service instance provides API key authentication
-            service = SpeechToTextV1 (
-                ## url is optional, and defaults to the URL below. Use the correct URL for your region.
-                url='https://gateway-wdc.watsonplatform.net/speech-to-text/api',
-                iam_apikey='iI6HjiOk8o2mMa86Nic4cSgAF9Sqhhp0bIoGcGo1BT63'
-            )
+            # Get Text from Speech
+            text = speechToText(filename)
 
-            with open(filename, 'rb') as audio_file:
-                result = service.recognize (
-                            audio=audio_file,
-                            content_type='audio/wav',
-                            timestamps=True,
-                            word_confidence=True
-                            ).get_result()
-                try:
-                    text = result["results"][0]["alternatives"][0]["transcript"]
-                    # Print out text content for quick check
-                    print("======================\n{}\n======================".format(text))
-                    # Check if page jumping is needed
-                    if "log in" in text:
-                        return HttpResponseRedirect('/accounts/login/')
-                    elif "register" in text:
-                        return HttpResponseRedirect('/accounts/register/')
-                    elif "profile" in text:
-                        return HttpResponseRedirect('/accounts/profile/')
-                    else:
-                        err_msg = "Sorry, we did not understand your command."
-                        context.update({"err_msg": err_msg})
-                        render(request, 'index.html', context)
-                    os.remove(filename)
-                except:
-                    print(result)
+            if text:
+                # Check if page jumping is needed
+                if "log in" in text:
+                    return HttpResponseRedirect('/accounts/login/')
+                elif "register" in text:
+                    return HttpResponseRedirect('/accounts/register/')
+                elif "profile" in text:
+                    return HttpResponseRedirect('/accounts/profile/')
+                else:
+                    err_msg = "Sorry, we did not understand your command."
+                    context.update({"err_msg": err_msg})
+                    return render(request, 'index.html', context)
 
     return render(request, 'index.html', context)
 
@@ -151,19 +135,79 @@ def logout(request):
 """
 Profile page
 """
-@login_required
+# @login_required
 def profile(request):
-    current_user = request.user
-    username = current_user.get_username()
-    context = {
-        'username' : username,
-    }
+    context = {}
+
+    if request.method == "POST":
+        data_form = ProfileForm(request.POST)
+        if data_form.is_valid():
+
+            print("======= Form Check Pass =======")
+
+            # Get data from the form
+            data_string = data_form.cleaned_data['data']
+            index = data_form.cleaned_data['index']
+
+            index = int(index)
+
+            print(data_string)
+            # print(data_data)
+
+            if index == 0:
+                # Voice Input
+
+                data_string = data_string.strip().split(",")
+                data_data = [int(num) for num in data_string]
+                # Extract single channel (sampwidth=1) from the data
+                extract_data = data_data[1::2]
+                # Transform the audio data into np array integers
+                audio_np_array = np.array(extract_data)
+                # Transform the np array in to .wav file
+                filename = "audio.wav"
+                wavio.write(filename, audio_np_array, rate=44100, scale=None, sampwidth=1)
+                # Get Text from Speech
+                text = speechToText(filename)
+                if text:
+                    # Check if page jumping is needed
+                    if "take a photo" in text or "take photo" in text or "take" in text:
+                        context.update({
+                            "take_photo": True,
+                        })
+                        return render(request, "user_profile.html", context)
+                    else:
+                        err_msg = "Sorry, we did not understand your command."
+                        context.update({
+                            "err_msg": err_msg,
+                            "take_photo": False,
+                        })
+                        return render(request, 'user_profile.html', context)
+
+
+            else:
+                # Data Input
+                # Write into file
+                filename = "myImage.png"
+                img_data = base64.b64decode(data_string[len("data:image/png;base64,"):])
+                img_file = open(filename, "wb+")
+                img_file.write(img_data)
+                img_file.close()
+
+                context.update({
+                    "take_photo": False
+                })
+                os.remove(filename)
+
     return render(request, "user_profile.html", context)
 
 """
 Form Helper Methods
 """
 class IndexForm(forms.Form):
+    data = forms.CharField(label="Data", max_length=None)
+
+class ProfileForm(forms.Form):
+    index = forms.CharField(label="Index", max_length=None)
     data = forms.CharField(label="Data", max_length=None)
 
 class UserFormRegister(forms.Form):
@@ -174,3 +218,31 @@ class UserFormRegister(forms.Form):
 class UserFormLogin(forms.Form):
     username = forms.CharField(label='Username',max_length=100)
     password = forms.CharField(label='Password',widget=forms.PasswordInput())
+
+"""
+IBM API
+"""
+def speechToText(filename):
+    # If service instance provides API key authentication
+    service = SpeechToTextV1(
+        ## url is optional, and defaults to the URL below. Use the correct URL for your region.
+        url='https://gateway-wdc.watsonplatform.net/speech-to-text/api',
+        iam_apikey='iI6HjiOk8o2mMa86Nic4cSgAF9Sqhhp0bIoGcGo1BT63'
+    )
+
+    with open(filename, 'rb') as audio_file:
+        result = service.recognize(
+            audio=audio_file,
+            content_type='audio/wav',
+            timestamps=True,
+            word_confidence=True
+        ).get_result()
+        try:
+            text = result["results"][0]["alternatives"][0]["transcript"]
+            # Print out text content for quick check
+            print("======================\n{}\n======================".format(text))
+            os.remove(filename)
+            return text
+        except:
+            print(result)
+    return
